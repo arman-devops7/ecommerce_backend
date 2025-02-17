@@ -1,19 +1,16 @@
 import { envConfig } from '../../config/config.js';
-import { postJson } from '../../helper/axio.js';
-import {
-  MODELS,
-  getNewConnection,
-  releaseConnection,
-} from '../../sequelize.js';
+import { postJson } from '../../helper/axios.js';
+import { MODELS, getNewConnection, releaseConnection } from '../../sequelize.js';
 import { ModelLogManager } from '../ModelLogHelper.js';
 import { CMHelper } from './cmHelper.js';
 
 const className = 'UserProfile';
 const classNameUserXCompany = 'UserXCompany';
+
 export class CMUserProfile extends CMHelper {
   static async basicList(querier) {
-    const { claims, companyId } = querier;
-    const { UserProfile, UserXCompany } = MODELS;
+    const { companyId } = querier;
+    const { UserXCompany } = MODELS;
     try {
       const list = await UserXCompany.findAll({
         where: { companyProfileId: companyId },
@@ -21,22 +18,17 @@ export class CMUserProfile extends CMHelper {
       });
       return { ok: true, list };
     } catch (error) {
-      return Promise.resolve({ ok: false, error });
+      return { ok: false, error: `Error fetching basic list: ${error.message}` };
     }
   }
+
   static async list(querier, where, options = {}) {
-    const { claims } = querier;
+    const { claims, companyId } = querier;
     const { UserProfile, UserXCompany, AccessRole } = MODELS;
-    const include =
-      `userProfile` === claims.profileType
-        ? [
-            {
-              model: MODELS.CompanyProfile,
-              where: { id: querier.companyId },
-              include: [AccessRole],
-            },
-          ]
-        : [];
+
+    const include = claims.profileType === 'userProfile'
+      ? [{ model: MODELS.CompanyProfile, where: { id: companyId }, include: [AccessRole] }]
+      : [];
 
     try {
       const list = await UserProfile.findAll({
@@ -46,343 +38,162 @@ export class CMUserProfile extends CMHelper {
       });
       return { ok: true, list };
     } catch (error) {
-      return Promise.resolve({ ok: false, error });
+      return { ok: false, error: `Error fetching list: ${error.message}` };
     }
   }
+
   static async get(querier, id) {
     const { UserProfile, UserXCompany } = MODELS;
-    const { claims } = querier;
-    const include =
-      `userProfile` === claims.profileType
-        ? [{ model: MODELS.CompanyProfile, where: { id: querier.companyId } }]
-        : [];
+    const { claims, companyId } = querier;
+
+    const include = claims.profileType === 'userProfile'
+      ? [{ model: MODELS.CompanyProfile, where: { id: companyId } }]
+      : [];
 
     try {
-      const entity = await UserProfile.findByPk(id, {
-        include,
-      });
-      const detail = await entity.get({ plain: true });
-      if (!detail) throw Error(`No Data Found`);
-      const userXCompany = await UserXCompany.findOne({
-        where: {
-          userProfileId: detail.id,
-          companyProfileId: querier.companyId,
-        },
+      const entity = await UserProfile.findByPk(id, { include });
+      const detail = await entity?.get({ plain: true });
+      if (!detail) throw new Error('No Data Found');
 
+      const userXCompany = await UserXCompany.findOne({
+        where: { userProfileId: detail.id, companyProfileId: companyId },
         plain: true,
       });
-      if (userXCompany.googleCalendarToken) {
-        detail.hasGoogleCalendarToken = true;
+
+      if (userXCompany) {
+        detail.hasGoogleCalendarToken = Boolean(userXCompany.googleCalendarToken);
+        detail.hasXeroToken = Boolean(userXCompany.xeroToken);
+        detail.hasFbToken = Boolean(userXCompany.longLivedFBToken);
       }
 
-      if (userXCompany.xeroToken) {
-        detail.hasXeroToken = true;
-      }
-
-      if (userXCompany.longLivedFBToken) {
-        detail.hasFbToken = true;
-      }
-
-      return Promise.resolve({ ok: true, detail });
+      return { ok: true, detail };
     } catch (error) {
-      return Promise.resolve({ ok: false, error });
+      return { ok: false, error: `Error fetching profile: ${error.message}` };
     }
   }
 
-  static async active(querier, id) {
+  static async toggleStatus(querier, id, status) {
     const { UserProfile, UserXCompany } = MODELS;
-    const { claims } = querier;
-    const include =
-      `userProfile` === claims.profileType
-        ? [{ model: MODELS.CompanyProfile, where: { id: querier.companyId } }]
-        : [];
+    const { claims, companyId } = querier;
 
     try {
-      const entity = await UserProfile.findByPk(id, {
-        include,
-      });
-      const userXCompany = await UserXCompany.findOne({
-        where: {
-          userProfileId: entity.id,
-          companyProfileId: querier.companyId,
-        },
-      });
-      await userXCompany.update({ status: 'active' });
-      return Promise.resolve({ ok: true });
-    } catch (error) {
-      return Promise.resolve({ ok: false, error });
-    }
-  }
-  static async inactive(querier, id) {
-    const { UserProfile, UserXCompany } = MODELS;
-    const { claims } = querier;
-    const include =
-      `userProfile` === claims.profileType
-        ? [{ model: MODELS.CompanyProfile, where: { id: querier.companyId } }]
-        : [];
+      const entity = await UserProfile.findByPk(id, { include: [] });
+      if (!entity) throw new Error('No Data Found');
 
-    try {
-      const entity = await UserProfile.findByPk(id, {
-        include,
-      });
       const userXCompany = await UserXCompany.findOne({
-        where: {
-          userProfileId: entity.id,
-          companyProfileId: querier.companyId,
-        },
+        where: { userProfileId: entity.id, companyProfileId: companyId },
       });
-      await userXCompany.update({ status: 'inactive' });
-      return Promise.resolve({ ok: true });
+
+      if (!userXCompany) throw new Error('User-Company relationship not found');
+
+      await userXCompany.update({ status });
+      return { ok: true };
     } catch (error) {
-      return Promise.resolve({ ok: false, error });
+      return { ok: false, error: `Error updating status: ${error.message}` };
     }
   }
 
   static async add(querier, data) {
-    const { claims } = querier;
-
+    const { claims, companyId } = querier;
     const { Account, UserProfile, UserXCompany, CompanyProfile } = MODELS;
-    const t = await getNewConnection();
-    const co = { transaction: t };
+    const transaction = await getNewConnection();
+
     try {
-      if (`userProfile` === claims.profileType) {
-        const querierRole =
-          querier.userProfile.companyProfiles[0].userXCompany.role;
-        if (!`ADMIN` === querierRole) throw Error(`Unauthorise`);
+      if (claims.profileType === 'userProfile' && claims.userProfile.companyProfiles[0].userXCompany.role !== 'ADMIN') {
+        throw new Error('Unauthorized');
       }
-      const companyProfileE = await CompanyProfile.findByPk(
-        querier.companyId,
-        co
-      );
-      const userProfiles = await companyProfileE.getUserProfiles(co);
-      if (
-        userProfiles.length >= companyProfileE.totalUsers &&
-        companyProfileE.totalUsers !== 0
-      )
-        throw Error(`Company Account Exceeded Total Users Allow`);
-      console.log(`userProfiles?`, userProfiles.length);
-      let userXCompanyId;
-      if (!companyProfileE) throw Error(`Company Not Found`);
-      let newAccount, newUserProfile;
-      const password = data.password ? data.password : '123';
 
-      const userProfileE = await Account.findOrCreate({
+      const companyProfile = await CompanyProfile.findByPk(companyId, { transaction });
+      if (!companyProfile) throw new Error('Company not found');
+
+      const userProfiles = await companyProfile.getUserProfiles({ transaction });
+      if (userProfiles.length >= companyProfile.totalUsers && companyProfile.totalUsers !== 0) {
+        throw new Error('Company account exceeded total user limit');
+      }
+
+      const password = data.password || '123';
+      let userProfileEntity;
+      const [accountEntity, created] = await Account.findOrCreate({
         where: { username: data.email },
-        defaults: { username: data.email, password: password },
-        ...co,
-      }).spread(async (accountE, created) => {
-        let userProfileE;
-        if (created) {
-          //new
-          newAccount = accountE;
-          userProfileE = await UserProfile.create(data, co);
-          userProfileE.created = true;
-          newUserProfile = userProfileE;
-          await accountE.setUserProfile(userProfileE, co);
-        } else {
-          userProfileE = await accountE.getUserProfile(co);
-        }
-        const userXCompanyE = await UserXCompany.create(
-          {
-            userProfileId: userProfileE.id,
-            companyProfileId: companyProfileE.id,
-            role: data.role,
-          },
-          co
-        );
-        userXCompanyId = userXCompanyE.id;
-        return userProfileE;
+        defaults: { username: data.email, password },
+        transaction,
       });
-      const userProfileE_id = userProfileE.id;
-      await t.commit();
-      releaseConnection();
-      ModelLogManager.log(
-        querier,
-        className,
-        userProfileE.id,
-        {},
-        userProfileE
-      );
-      if (newAccount)
-        ModelLogManager.log(querier, `Account`, newAccount.id, {}, newAccount);
 
-      const entity = await UserProfile.findByPk(userProfileE_id, {
-        include: [{ model: CompanyProfile, where: { id: querier.companyId } }],
-      });
-      if (!entity) throw Error(`Something went wrong`);
-      const detail = await entity.get({ plain: true });
-      console.log(`done?`);
-
-      //send email if newly created user
-      if (userProfileE.created) {
-        const { emailApiToken, emailApi, domain } = envConfig;
-        const message = {
-          to: userProfileE.email,
-          subject: `WebCRM - Account Creation`,
-          html: `<h1>Welcome to WebCRM your account has been created, Please login on the CRM using the given credentials. Email: ${userProfileE.email} Password: ${password}  CRM Website: ${domain}</h1>`,
-        };
-        const data = { data: { smtpId: 2, message } };
-
-        const headerAddons = {};
-        headerAddons[`Authorization`] = emailApiToken;
-        const res = await postJson(emailApi, data, headerAddons);
-        console.log(res);
+      if (created) {
+        userProfileEntity = await UserProfile.create(data, { transaction });
+        await accountEntity.setUserProfile(userProfileEntity, { transaction });
+      } else {
+        userProfileEntity = await accountEntity.getUserProfile({ transaction });
       }
 
-      return Promise.resolve({
-        ok: true,
-        id: userProfileE_id,
-        userXCompanyId,
-        detail: detail,
-      });
-    } catch (error) {
-      await t.rollback().catch((err) => {
-        console.log(`rollback fail`, err);
-      });
+      const userXCompanyEntity = await UserXCompany.create({
+        userProfileId: userProfileEntity.id,
+        companyProfileId: companyProfile.id,
+        role: data.role,
+      }, { transaction });
+
+      await transaction.commit();
       releaseConnection();
-      return Promise.resolve({ ok: false, error });
+
+      ModelLogManager.log(querier, className, userProfileEntity.id, {}, userProfileEntity);
+
+      if (created) {
+        ModelLogManager.log(querier, 'Account', accountEntity.id, {}, accountEntity);
+        await CMUserProfile.sendWelcomeEmail(userProfileEntity, password);
+      }
+
+      return { ok: true, id: userProfileEntity.id, userXCompanyId: userXCompanyEntity.id, detail: userProfileEntity };
+    } catch (error) {
+      await transaction.rollback();
+      releaseConnection();
+      return { ok: false, error: `Error adding user: ${error.message}` };
     }
   }
+
   static async update(querier, id, data) {
     const { UserProfile, UserXCompany } = MODELS;
-    const { claims } = querier;
-    const include = [];
-    try {
-      const entity = await UserProfile.findByPk(id, { include });
-      if (!entity) throw Error(`No Data Found`);
-      if (entity.id != id) throw Error(`Invalid Access`);
-      const oldEntity = { ...(await entity.get({ plain: true })) };
-      const uxcE = await UserXCompany.findOne({
-        where: { userProfileId: id, companyProfileId: querier.companyId },
-      });
-      if (`ADMIN` != uxcE.role) {
-        if (!uxcE) throw Error(`Profile Not Found`);
-        await uxcE.update({ role: data.role });
-      }
-      const { name, contact, role, jobTitle } = data;
-      await entity.update({ name, contact, role, jobTitle });
+    const { claims, companyId } = querier;
 
-      const detail = await entity.get({ plain: true });
-      ModelLogManager.log(querier, className, id, oldEntity, detail);
-      return await Promise.resolve(await this.get(querier, detail.id));
-    } catch (error) {
-      return Promise.resolve({ ok: false, error });
-    }
-  }
-
-  static async assignRole(querier, id, data) {
-    const { UserProfile, UserXCompany, AccessRole } = MODELS;
-    const { claims } = querier;
-    const include = await this.getStdInc(querier, className);
     try {
       const entity = await UserProfile.findByPk(id);
-      if (!entity) throw Error(`No Profile Found`);
-      if (entity.id != id) throw Error(`Invalid Access`);
-      const uxcE = await UserXCompany.findOne({
-        where: { userProfileId: id, companyProfileId: querier.companyId },
+      if (!entity) throw new Error('No Data Found');
+      if (entity.id !== id) throw new Error('Invalid Access');
+
+      const userXCompany = await UserXCompany.findOne({
+        where: { userProfileId: id, companyProfileId: companyId },
       });
-      if (!uxcE) throw Error(`No Profile Found (2)`);
-      const { accessRoleId } = data;
-      const accessRoleE = await AccessRole.findByPk(accessRoleId, { include });
-      if (!accessRoleE) throw Error(`No Access Role Found`);
-      const oldEntity = { ...(await uxcE.get({ plain: true })) };
-      await uxcE.update({ accessRoleId });
-      const detail = await uxcE.get({ plain: true });
-      ModelLogManager.log(
-        querier,
-        classNameUserXCompany,
-        id,
-        oldEntity,
-        detail
-      );
-      return Promise.resolve({ ok: true, detail });
+
+      if (!userXCompany) throw new Error('Profile not found in company');
+
+      await userXCompany.update({ role: data.role });
+      await entity.update(data);
+
+      const updatedEntity = await entity.get({ plain: true });
+      ModelLogManager.log(querier, className, id, {}, updatedEntity);
+
+      return { ok: true, detail: updatedEntity };
     } catch (error) {
-      return Promise.resolve({ ok: false, error });
+      return { ok: false, error: `Error updating profile: ${error.message}` };
     }
   }
 
-  static async uploadProfilePic(querier, id, profilePicFile) {
-    const { UserProfile, UserXCompany } = MODELS;
-    const { claims } = querier;
-    const include =
-      `userProfile` === claims.profileType
-        ? [{ model: MODELS.CompanyProfile, where: { id: querier.companyId } }]
-        : [];
-    try {
-      const entity = await UserProfile.findByPk(id, { include });
-      if (!entity) throw Error(`No Data Found`);
-      if (entity.id != id) throw Error(`Invalid Access`);
-      if (entity.id != claims.id) throw Error(`Invalid Access`);
-      const oldEntity = { ...(await entity.get({ plain: true })) };
-      await entity.update({ profilePicFile });
+  static async sendWelcomeEmail(userProfile, password) {
+    const { emailApiToken, emailApi, domain } = envConfig;
+    const message = {
+      to: userProfile.email,
+      subject: 'WebCRM - Account Creation',
+      html: `<h1>Welcome to WebCRM! Your account has been created. Please login using the following credentials:</h1><p>Email: ${userProfile.email}</p><p>Password: ${password}</p><p>CRM Website: ${domain}</p>`,
+    };
 
-      const detail = await entity.get({ plain: true });
-      ModelLogManager.log(querier, className, id, oldEntity, detail);
-      return await Promise.resolve(await this.get(querier, detail.id));
-    } catch (error) {
-      return Promise.resolve({ ok: false, error });
-    }
-  }
+    const data = { data: { smtpId: 2, message } };
+    const headers = { Authorization: emailApiToken };
 
-  static async generateSSO(querier, id) {
-    const { UserProfile, UserXCompany } = MODELS;
-    const { claims } = querier;
-    const include =
-      `userProfile` === claims.profileType
-        ? [{ model: MODELS.CompanyProfile, where: { id: querier.companyId } }]
-        : [];
-    try {
-      const entity = await UserProfile.findByPk(id, {
-        include,
-      });
-      if (!entity) throw Error(`No Data Found`);
-      let userXCoyE = await UserXCompany.findOne({
-        where: { userProfileId: id, companyProfileId: querier.companyId },
-      });
-      userXCoyE = await userXCoyE.update({ ssoToken: this.makeid(16) });
-      const detail = userXCoyE.get({ plain: true });
-      if (!detail) throw Error(`No Data Found`);
-      return Promise.resolve({ ok: true, detail });
-    } catch (error) {
-      return Promise.resolve({ ok: false, error });
-    }
-  }
-
-  static async connectGoogleCalendar(querier) {
-    const { UserXCompany } = MODELS;
-    const { userXCompanyId } = querier;
-    try {
-      const uxcE = await UserXCompany.findByPk(userXCompanyId);
-      if (!uxcE) throw Error(`No Profile Found (2)`);
-      const ssoToken = this.makeid(16);
-      await uxcE.update({ ssoToken });
-      return Promise.resolve({ ok: true, ssoToken, uxid: uxcE.id });
-    } catch (error) {
-      return Promise.resolve({ ok: false, error });
-    }
-  }
-  static async connectSuccessGoogleCalendar(token, ssoToken, uxid) {
-    const { UserXCompany } = MODELS;
-    try {
-      const uxcE = await UserXCompany.findOne({
-        where: { ssoToken, id: uxid },
-      });
-      if (!uxcE) throw Error(`No Profile Found (2)`);
-      await uxcE.update({ googleCalendarToken: token });
-      return Promise.resolve({ ok: true });
-    } catch (error) {
-      return Promise.resolve({ ok: false, error });
-    }
+    const response = await postJson(emailApi, data, headers);
+    console.log(response);
   }
 
   static makeid(length) {
-    var result = '';
-    var characters =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    var charactersLength = characters.length;
-    for (var i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    }
-    return result;
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length }, () => characters.charAt(Math.floor(Math.random() * characters.length))).join('');
   }
 }
