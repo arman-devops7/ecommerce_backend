@@ -9,6 +9,7 @@ const ns = `/company/accessLog`;
 company_accessLog_api.get(`${ns}/test`, function (req, res) {
   res.send(`${ns} OK`);
 });
+
 //LIST
 company_accessLog_api.get(`${ns}/list`, async (req, res) => {
   const { querier } = req.body;

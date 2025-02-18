@@ -1,29 +1,36 @@
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 
+// Load keys once during module initialization
 const privateKEY = fs.readFileSync('./private.key', 'utf8');
 const publicKEY = fs.readFileSync('./public.key', 'utf8');
-const profile_signOptions = {
-  issuer: `LEO`,
-  subject: `Profile`,
-  audience: `TIMBRE`,
+
+const profileSignOptions = {
+  issuer: 'arman',
+  subject: 'Profile',
+  audience: 'TIMBRE',
   expiresIn: '9999h',
   algorithm: 'RS256', // RSASSA [ "RS256", "RS384", "RS512" ]
 };
+
+// Sign JWT
 export const JWT_signProfile = (profile, profileType) => {
-  profile.profileType = profileType;
-  console.log(`profile??`, profile);
-  const token = jwt.sign(profile, privateKEY, profile_signOptions);
-  console.log(`token??`, token);
-  return { token, expiresIn: profile_signOptions.expiresIn };
+  try {
+    const payload = { ...profile, profileType };
+    const token = jwt.sign(payload, privateKEY, profileSignOptions);
+    return { token, expiresIn: profileSignOptions.expiresIn };
+  } catch (error) {
+    console.error('Error signing JWT:', error.message);
+    throw new Error('Failed to generate token');
+  }
 };
 
+// Verify JWT
 export const JWT_verifyProfile = (token) => {
   try {
-    const claim = jwt.verify(token, publicKEY, profile_signOptions);
-    return claim;
-  } catch (err) {
-    console.log(`JWT_verifyProfile ERROR`, err.name);
-    return;
+    return jwt.verify(token, publicKEY, profileSignOptions);
+  } catch (error) {
+    console.error('JWT verification failed:', error.message);
+    return null;
   }
 };

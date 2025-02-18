@@ -42,7 +42,6 @@ company_product_api.post(
       fs.copyFile(path, `${mediaFolder}${filename}`, (err) => {
         if (err) {
           console.log('Error Found:', err);
-        } else {
         }
       });
       res.send(detail);
@@ -61,6 +60,7 @@ company_product_api.get(`${ns}/list`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //LIST
 company_product_api.get(`${ns}/basicList`, async (req, res) => {
   const { querier } = req.body;
@@ -71,6 +71,7 @@ company_product_api.get(`${ns}/basicList`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //GET
 company_product_api.get(`${ns}/:id/get`, async (req, res) => {
   const { querier, companyId } = req.body;
@@ -79,6 +80,7 @@ company_product_api.get(`${ns}/:id/get`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //ADD
 company_product_api.post(`${ns}/add`, async (req, res) => {
   const { querier, data } = req.body;
@@ -93,6 +95,7 @@ company_product_api.post(`${ns}/add`, async (req, res) => {
   // else res.status(500).send({ ok: false, message: seqVError(detail.error) });
   // return;
 });
+
 //UPDATE
 company_product_api.post(`${ns}/:id/update`, async (req, res) => {
   const { querier, data } = req.body;
@@ -142,6 +145,7 @@ company_product_api.post(`${ns}/:id/addProductUom`, async (req, res) => {
       .status(500)
       .send({ ok: false, message: seqVError(detail.error) });
 });
+
 //UPDATE UOM
 company_product_api.post(
   `${ns}/:id/:productUomId/updateProductUom`,
@@ -171,6 +175,7 @@ company_product_api.post(`${ns}/:id/addPart`, async (req, res) => {
       .status(500)
       .send({ ok: false, message: seqVError(detail.error) });
 });
+
 //UPDATE PART
 company_product_api.post(
   `${ns}/:id/:productPartId/updatePart`,
@@ -182,6 +187,7 @@ company_product_api.post(
     else res.status(500).send({ ok: false, message: seqVError(detail.error) });
   }
 );
+
 //DELETE PART
 company_product_api.get(
   `${ns}/:id/:productPartId/deletePart`,

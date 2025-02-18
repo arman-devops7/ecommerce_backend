@@ -1,13 +1,12 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import { loadConfig } from './config/config.js';
-
 import express from 'express';
 import bodyParser from 'body-parser';
 import morgan from 'morgan';
-
 import cors from 'cors';
 import { companyApis } from './routes/company/company_api.js';
+import { adminApis } from './routes/admin/admin_api.js';
 import { sequelize, startConnection } from './sequelize.js';
 
 // import moment from 'moment';
@@ -39,6 +38,7 @@ const init = async () => {
   );
 
   app.use(companyApis);
+  app.use(adminApis);
 
   app.listen(process.env.COMPANY_PORT, () => {
     console.log(

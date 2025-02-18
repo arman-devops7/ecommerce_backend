@@ -40,6 +40,7 @@ export class CMAuth {
     });
     return account;
   }
+
   static async loginViaSSO(querier, ssoToken) {
     console.log(`sso??`, ssoToken);
     const { Account, UserProfile, CompanyProfile, UserXCompany } = MODELS;
@@ -73,6 +74,7 @@ export class CMAuth {
     const account = await UserProfile.findByPk(claims.id, { where: { status: `active` } });
     return await account.get({ plain: true });
   }
+  
   static async getProfileAccess(userXCompanyId) {
     const { UserXCompany, AccessRole, AccessRoleRight } = MODELS;
     const account = await UserXCompany.findByPk(userXCompanyId, {
@@ -95,15 +97,7 @@ export class CMAuth {
 
   static async checkJwt(token) {
     const { Jwt } = MODELS;
-    const jwt = await Jwt.findOne({
-      where: {
-        token,
-      },
-    });
-    if (jwt) {
-      return true;
-    } else {
-      return false;
-    }
+    const jwt = await Jwt.findOne({ where: { token } });
+    return !!jwt;
   }
 }

@@ -15,6 +15,7 @@ export class AMCompanyProfile {
       return Promise.resolve({ ok: false, error });
     }
   }
+  
   static async get(querier, id) {
     const { CompanyProfile, UserProfile, Account } = MODELS;
     try {
@@ -28,6 +29,7 @@ export class AMCompanyProfile {
       return Promise.resolve({ ok: false, error });
     }
   }
+
   static async add(querier, data) {
     const { Account, UserProfile, UserXCompany, CompanyProfile } = MODELS;
     const t = await getNewConnection();
@@ -85,6 +87,7 @@ export class AMCompanyProfile {
       return Promise.resolve({ ok: false, error });
     }
   }
+
   static async update(querier, id, data) {
     const { CompanyProfile } = MODELS;
     try {
@@ -100,6 +103,7 @@ export class AMCompanyProfile {
       return Promise.resolve({ ok: false, error });
     }
   }
+
   static async resetUserPassword(querier, id, userProfileId) {
     const { CompanyProfile, UserProfile, Account } = MODELS;
     try {

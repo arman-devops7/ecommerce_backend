@@ -24,10 +24,10 @@ admin_middleware.all(`${ns}/*`, async function (req, res, next) {
 
   const BearerRaw = req.headers.authorization;
   if (!BearerRaw) return res.status(403).send(errorObj(`Unauthorized Access`));
-  const Bearer = BearerRaw.startsWith(`Bearer`) ? BearerRaw.substr(7, BearerRaw.length) : BearerRaw;
+  const Bearer = BearerRaw.startsWith(`Bearer`) ? BearerRaw.slice(7) : BearerRaw;
 
   const claims = JWT_verifyProfile(
-    Bearer.startsWith(`Bearer`) ? Bearer.substr(7, Bearer.length) : Bearer
+    Bearer.startsWith(`Bearer`) ? Bearer.slice(7) : Bearer
   );
   if (!claims || 'adminProfile' !== claims.profileType)
     return res.status(403).send(errorObj(`Unauthorized Access`));

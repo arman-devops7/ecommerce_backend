@@ -9,7 +9,7 @@ const errorObj = (message) => {
   return { ok: false, message };
 };
 company_middleware.all(`${ns}/*`, async function (req, res, next) {
-  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   console.log(`in ${ns}/*`, req.path);
   console.log(`res:: incoming`, ip);
   req.body.querier = { jwt: false, ip };
@@ -25,9 +25,8 @@ company_middleware.all(`${ns}/*`, async function (req, res, next) {
 
   const BearerRaw = req.headers.authorization;
   if (!BearerRaw) return res.status(403).send(errorObj(`Unauthorized Access`));
-  const Bearer = BearerRaw.startsWith(`Bearer`)
-    ? BearerRaw.substr(7, BearerRaw.length)
-    : BearerRaw;
+  const Bearer = BearerRaw.startsWith('Bearer ') ? BearerRaw.slice(7) : BearerRaw;
+
 
   const checkJwt = await CMAuth.checkJwt(Bearer);
   if (!checkJwt)
@@ -36,7 +35,7 @@ company_middleware.all(`${ns}/*`, async function (req, res, next) {
       .send(errorObj(`Unauthorized Access Reason: Expired`));
 
   const claims = JWT_verifyProfile(
-    Bearer.startsWith(`Bearer`) ? Bearer.substr(7, Bearer.length) : Bearer
+    Bearer.startsWith('Bearer ') ? Bearer.slice(7) : Bearer
   );
   if (!claims || 'userProfile' !== claims.profileType)
     return res.status(403).send(errorObj(`Unauthorized Access`));

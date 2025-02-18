@@ -8,6 +8,7 @@ const ns = `/company/accessRight`;
 company_accessRight_api.get(`${ns}/test`, function (req, res) {
   res.send(`${ns} OK`);
 });
+
 //LIST ACCESS RIGHTS
 company_accessRight_api.get(`${ns}/list`, async (req, res) => {
   const { querier } = req.body;

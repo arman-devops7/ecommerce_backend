@@ -108,6 +108,7 @@ company_productCategory_api.get(`${ns}/:id/active`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //inactive
 company_productCategory_api.get(`${ns}/:id/inactive`, async (req, res) => {
   const { querier, companyId } = req.body;

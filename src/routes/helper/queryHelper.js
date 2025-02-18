@@ -1,49 +1,54 @@
-import Sequelize from 'sequelize';
-const Op = Sequelize.Op;
+import { Op } from 'sequelize';
+
 export const Q_listoptions = (req) => {
   const { limit, offset, order } = req.query;
-
   const options = {};
+
   if (limit) options.limit = Number(limit);
   if (offset) options.offset = Number(offset);
+
   if (order) {
-    const orderObj = JSON.parse(order);
-    options.order = orderObj.order;
+    try {
+      const orderObj = JSON.parse(order);
+      options.order = Array.isArray(orderObj.order) ? orderObj.order : [];
+    } catch (error) {
+      console.error('Invalid order format:', error.message);
+      options.order = [];
+    }
   }
+
   return options;
 };
 
 export const Q_where = (conditions, req) => {
-  const query = req.query;
+  const { query } = req;
   const where = {};
-  if (conditions) {
-    console.log(`query?`, query);
-    for (const c of conditions) {
-      const { field, type = `=` } = c;
-      if (query[`${field}`]) {
-        // type : = |
-        let value = query[`${field}`];
-        if ('null' === value) value = null;
 
+  if (Array.isArray(conditions)) {
+    console.log('Query Parameters:', query);
+
+    for (const { field, type = '=' } of conditions) {
+      const value = query[field];
+
+      if (value !== undefined) {
         switch (type) {
-          case `=`:
-            where[`${field}`] = value;
+          case '=':
+            where[field] = value === 'null' ? null : value;
             break;
-          case `!Null`:
-            if (value) {
-              if (value === 'true') {
-                value = {
-                  [Op.not]: null,
-                };
-              } else {
-                value = null;
-              }
-            }
-            where[`${field}`] = value;
+
+          case '!Null':
+            where[field] = value === 'true'
+              ? { [Op.not]: null }
+              : null;
+            break;
+
+          default:
+            console.warn(`Unsupported condition type: ${type}`);
             break;
         }
       }
     }
   }
+
   return where;
 };

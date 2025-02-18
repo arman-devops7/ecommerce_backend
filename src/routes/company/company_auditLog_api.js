@@ -8,6 +8,7 @@ const ns = `/company/auditLog`;
 company_auditLog_api.get(`${ns}/test`, function (req, res) {
   res.send(`${ns} OK`);
 });
+
 //LIST
 company_auditLog_api.get(`${ns}/list`, async (req, res) => {
   const { querier } = req.body;

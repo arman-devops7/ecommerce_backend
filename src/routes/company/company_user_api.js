@@ -1,10 +1,11 @@
 import express from 'express';
-import { Q_listoptions, Q_where } from '../helper/queryHelper.js';
+import multer from 'multer';
+import fs from 'fs';
+import { envConfig } from '../../config/config.js';
 import { seqVError } from '../../entityManagers/seqErrorHelper.js';
 import { CMUserProfile } from '../../entityManagers/company/cmUserProfile.js';
-import multer from 'multer';
-import * as fs from 'fs';
-import { envConfig } from '../../config/config.js';
+import { Q_listoptions, Q_where } from '../helper/queryHelper.js';
+
 export const company_user_api = express.Router();
 
 const folder = 'uploads/';
@@ -53,6 +54,7 @@ company_user_api.get(`${ns}/list`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //LIST
 company_user_api.get(`${ns}/basicList`, async (req, res) => {
   const { querier } = req.body;
@@ -63,6 +65,7 @@ company_user_api.get(`${ns}/basicList`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //GET
 company_user_api.get(`${ns}/:id/get`, async (req, res) => {
   const { querier, companyId } = req.body;
@@ -71,6 +74,7 @@ company_user_api.get(`${ns}/:id/get`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //ADD
 company_user_api.post(`${ns}/add`, async (req, res) => {
   const { querier, data } = req.body;
@@ -91,6 +95,7 @@ company_user_api.get(`${ns}/:id/active`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //inactive
 company_user_api.get(`${ns}/:id/inactive`, async (req, res) => {
   const { querier, companyId } = req.body;

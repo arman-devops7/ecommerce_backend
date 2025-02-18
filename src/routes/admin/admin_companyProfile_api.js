@@ -6,8 +6,9 @@ export const admin_company_api = express.Router();
 
 const ns = `/admin/company`;
 admin_company_api.get(`${ns}/test`, function (req, res) {
-  res.send(`${ns} OK`);
+  res.send({ ok: true });
 });
+
 //LIST
 admin_company_api.get(`${ns}/list`, async (req, res) => {
   const { querier } = req.body;
@@ -19,6 +20,7 @@ admin_company_api.get(`${ns}/list`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //GET
 admin_company_api.get(`${ns}/:id/get`, async (req, res) => {
   const { querier } = req.body;
@@ -27,6 +29,7 @@ admin_company_api.get(`${ns}/:id/get`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //ADD
 admin_company_api.post(`${ns}/add`, async (req, res) => {
   const { querier, data } = req.body;
@@ -36,6 +39,7 @@ admin_company_api.post(`${ns}/add`, async (req, res) => {
 
   return;
 });
+
 //UPDATE
 admin_company_api.post(`${ns}/:id/update`, async (req, res) => {
   const { querier, data } = req.body;

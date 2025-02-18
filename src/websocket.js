@@ -1,12 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import { loadConfig } from './config/config.js';
-
 import express from 'express';
 import { startConnection } from './sequelize.js';
-import { generalApis } from './routes/general/general_api.js';
+// import { generalApis } from './routes/general/general_api.js';
 import serverHttp from 'http';
-
 import socket from 'socket.io';
 import { JWT_verifyProfile } from './routes/JWT/JWTHelper.js';
 import { AMNotification } from './entityManagers/admin/amNotification.js';
@@ -34,9 +32,7 @@ const init = async () => {
 
     //REQUEST TO CONNECT
     socket.on('request_connection', ({ jwt }) => {
-      const claims = JWT_verifyProfile(
-        jwt.startsWith(`Bearer`) ? jwt.substr(7, jwt.length) : jwt
-      );
+      const claims = JWT_verifyProfile(jwt.startsWith('Bearer ') ? jwt.slice(7) : jwt);
       if (claims) {
         const extend = jwt.substr(jwt.length - 10, jwt.length);
         const profileKey = `${claims.profileType}${claims.id}_${extend}`;
@@ -75,7 +71,7 @@ const init = async () => {
           io.emit(k, {
             detail,
           });
-        } catch (error) {}
+        } catch (error) { }
       }
     });
   }, 5000);

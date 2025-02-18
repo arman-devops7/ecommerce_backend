@@ -8,6 +8,7 @@ const ns = `/company/accessRole`;
 company_accessRole_api.get(`${ns}/test`, function (req, res) {
   res.send(`${ns} OK`);
 });
+
 //LIST
 company_accessRole_api.get(`${ns}/list`, async (req, res) => {
   const { querier } = req.body;
@@ -18,6 +19,7 @@ company_accessRole_api.get(`${ns}/list`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //GET
 company_accessRole_api.get(`${ns}/:id/get`, async (req, res) => {
   const { querier, companyId } = req.body;
@@ -26,6 +28,7 @@ company_accessRole_api.get(`${ns}/:id/get`, async (req, res) => {
   if (detail.ok) res.send(detail);
   else res.status(500).send({ ok: false, message: seqVError(detail.error) });
 });
+
 //ADD
 company_accessRole_api.post(`${ns}/add`, async (req, res) => {
   const { querier, data } = req.body;
@@ -35,6 +38,7 @@ company_accessRole_api.post(`${ns}/add`, async (req, res) => {
 
   return;
 });
+
 //UPDATE
 company_accessRole_api.post(`${ns}/:id/update`, async (req, res) => {
   const { querier, data } = req.body;
